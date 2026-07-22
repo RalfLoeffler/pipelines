@@ -1,13 +1,14 @@
 schema_version: "2.0"
 title: ProtocolQC
-version: "0.1.0-dev1"
+version: "0.1.0-dev2"
 authors:
   - name: Ralf Loeffler
-    email: ""
+    email: ralf.loeffler@unsw.edu.au
 docs:
   description: >-
-    Compare DICOM acquisition parameters in an XNAT imaging session against an
-    approved JSON protocol template packaged in the container image.
+    Compare DICOM acquisition parameters in an XNAT imaging session against a
+    project-specific approved JSON protocol template stored in an XNAT project
+    resource folder.
   info_url: https://github.com/RalfLoeffler/pipelines
 base_image:
   name: debian
@@ -15,6 +16,7 @@ base_image:
   package_manager: apt
 packages:
   pip:
+    requests:
     pydicom:
     fileformats:
     fileformats-medimage:
@@ -31,21 +33,26 @@ commands:
       type: python
       function: australianimagingservice.quality_control.protocol_qc:protocol_qc
     parameters:
-      ProtocolTemplate:
-        field: protocol_template
-        help: Absolute path to the approved protocol JSON file in the image.
-        default: /opt/protocol-qc-template/protocol-template.json
+      ProjectResourceLabel:
+        field: project_resource_label
+        help: >-
+          Label of the project-level XNAT resource folder containing the
+          approved protocol JSON file.
+        default: ProtocolQC
+      ProtocolTemplateFilename:
+        field: protocol_template_filename
+        help: Filename of the approved protocol JSON inside the project resource.
+        default: protocol-template.json
       OutputResource:
         field: output_resource
         help: FrameTree/XNAT derivative resource path for the JSON report.
         default: ProtocolQC@protocol-qc
       FailOnDeviation:
         field: fail_on_deviation
-        help: Fail the container after writing a report that contains deviations.
+        help: Fail the container after writing a report containing deviations.
         default: false
       DryRun:
         field: dry_run
         help: Generate and log the report without writing it back to XNAT.
         default: true
-    resources:
-      protocol-qc-template: /opt/protocol-qc-template
+

@@ -1,193 +1,141 @@
-# ProtocolQC XNAT Pipeline Scaffold
+# ProtocolQC XNAT Pipeline
 
 ## Purpose
 
-ProtocolQC compares DICOM acquisition parameters in an XNAT imaging session
-against an approved protocol template stored as a JSON resource in the built
-container image.
+ProtocolQC checks DICOM acquisition parameters from an XNAT imaging session
+against a project-specific approved JSON protocol template.
 
-The design is based on the supplied Flywheel ProtocolQC gear, but separates the
-platform-independent QC logic from XNAT/FrameTree access. Flywheel APIs,
-Twilio notifications, Flywheel tags, and `/flywheel/v0/output` are not part of
-this scaffold.
+## Protocol template location
 
-## Layout
+The template is **not included in the container image**. Each XNAT project must
+provide it as a project-level resource file.
 
-```text
-src/australianimagingservice/quality_control/protocol_qc/
-    comparison.py   Parameter comparison logic
-    dicom.py        DICOM reading and extraction
-    models.py       Structured report models
-    protocol.py     JSON template loading and validation
-    report.py       JSON serialisation
-    workflow.py     Pydra2App/XNAT entry point
-    xnat_io.py      FrameTree/XNAT file access and report upload
-
-resources/protocol-qc-template/
-    protocol-template.json
-
-specs/ralfloeffler/quality-control/
-    protocol-qc.yaml
-```
-
-## Packaged protocol resource
-
-The build command supplies `./resources` as the Pydra2App resources root. The
-specification maps the resource directory named `protocol-qc-template` into the
-container at:
+Default location:
 
 ```text
-/opt/protocol-qc-template
+Project resource label: ProtocolQC
+Filename:               protocol-template.json
 ```
 
-The task receives this absolute path by default:
+XNAT documents project resource files at:
 
 ```text
-/opt/protocol-qc-template/protocol-template.json
+GET /data/projects/{project-id}/resources/{resource-label}/files/{filename}
 ```
 
-The implementation deliberately reads the JSON with `pathlib.Path` and does
-not calculate a path relative to the Python package or repository. This is
-important because the source repository's directory layout is not guaranteed
-to exist inside a generated image.
-
-Before building a release image, replace the example file at:
+The pipeline downloads that file at runtime using the temporary credentials
+injected by XNAT Container Service:
 
 ```text
-resources/protocol-qc-template/protocol-template.json
+XNAT_HOST
+XNAT_USER
+XNAT_PASS
 ```
 
-with the approved template and validate its `Metadata.DictionaryVersion`.
+Do not place permanent XNAT credentials in the image, source code, YAML, or
+project resource JSON.
 
-## XNAT-conform DICOM access
+## XNAT file access
 
-The pipeline receives a session-level `frametree.core.row.DataRow` from the
-Pydra2App XNAT Container Service entry point.
+- DICOM scan resources are accessed through the FrameTree `DataRow` and
+  `entry.item` interfaces.
+- The project-level JSON template is accessed through the documented XNAT REST
+  project-resource endpoint because it is above the selected session row.
+- The session-level output report is written through
+  `data_row.create_entry(...)`, not through a hard-coded archive path.
 
-`xnat_io.iter_source_dicom_series()` performs the XNAT access sequence:
+## Uploading the template in XNAT
 
-1. Trigger FrameTree population through `data_row.entries_dict`.
-2. Iterate all session entries.
-3. Select entries whose datatype is `DicomSeries`.
-4. Exclude derivative entries.
-5. Access `entry.item`, which causes FrameTree/XNAT to materialise or download
-   the resource into the container cache.
-6. Read local paths through `DicomSeries.contents`.
+1. Open the target project.
+2. Open the project resources/files interface.
+3. Create a project resource named `ProtocolQC`.
+4. Upload the approved JSON as `protocol-template.json`.
+5. Confirm that the account launching the container can read the project file.
 
-The original XNAT files are treated as read-only. ProtocolQC does not modify
-input DICOM files.
+The resource label and filename can be overridden in the XNAT launch dialog.
 
-## XNAT-conform report output
+## Build on Windows
 
-The report is first written to a unique temporary directory. For a non-dry run,
-`xnat_io.write_session_report()` creates or reuses a derived FrameTree entry and
-assigns a `fileformats.generic.File` object to it. This lets the XNAT store
-adapter upload the report rather than using the XNAT REST API directly.
-
-Default derivative path:
+The installed Pydra2App version may generate a Docker `COPY` source containing
+Windows backslashes, for example:
 
 ```text
-ProtocolQC@protocol-qc
+python-packages\australianimagingservice-....tar.gz
 ```
 
-The exact XNAT resource label and overwrite behaviour must be validated in the
-local `xnat4tests` sandbox before production use.
+Docker requires `/` inside Dockerfile paths. Use the supplied wrapper, which
+runs Pydra2App and automatically patches the generated Dockerfile if this known
+Windows-only failure occurs.
 
-## Build
-
-From `D:\repos\pipelines`:
+Before running downloaded PowerShell scripts:
 
 ```powershell
-pydra2app make xnat `
-    .\specs\ralfloeffler\quality-control\protocol-qc.yaml `
-    --registry ghcr.io `
-    --loglevel info `
-    --resources-dir .\resources `
-    --spec-root .\specs `
-    --dont-check-registry `
-    --source-package .
+Get-ChildItem .\scripts\*.ps1 | Unblock-File
 ```
 
-Expected image:
+Build:
 
-```text
-ghcr.io/ralfloeffler/quality-control.protocol-qc:0.1.0-dev1
+```powershell
+.\scripts\Build-ProtocolQc.ps1 `
+    -RepositoryRoot D:\repos\pipelines `
+    -AuthorEmail "YOUR_EMAIL_ADDRESS"
 ```
-
-On Windows, the installed Pydra2App version may generate backslashes in a
-Dockerfile `COPY` path. Until fixed upstream, inspect and patch the generated
-Dockerfile or build through WSL2.
 
 ## First sandbox launch
 
-Use explicit safe values:
+Use:
 
 ```text
-DryRun = true
-FailOnDeviation = false
-OutputResource = ProtocolQC@protocol-qc
-ProtocolTemplate = /opt/protocol-qc-template/protocol-template.json
+ProjectResourceLabel     ProtocolQC
+ProtocolTemplateFilename protocol-template.json
+OutputResource           ProtocolQC@protocol-qc
+FailOnDeviation          false
+DryRun                   true
 ```
 
-## TODO: DICOM extraction parity
+## TODO
 
-- Port enhanced-MR Shared Functional Groups extraction from the Flywheel gear.
-- Port Siemens private-header extraction.
-- Port Phoenix protocol parsing.
-- Port phase-encoding polarity extraction from in-plane rotation.
-- Port MR spectroscopy handling.
-- Port calculated FOV, resolution, and slice-gap fields.
-- Define behaviour for standard single-frame MR Image Storage.
-- Replace broad exception handling with explicit tag and format checks.
-- Add synthetic enhanced-MR, spectroscopy, and Phoenix fixtures.
+### Template contract
 
-## TODO: comparison parity
+- Replace the example/test template with the approved production schema.
+- Add JSON Schema validation.
+- Define supported `DictionaryVersion` upgrade rules.
+- Decide whether multiple templates per project are supported.
+- Decide how scanner/model-specific alternatives are selected.
 
-- Port Multi-Echo comparison.
-- Port `Temporal_positions_multiplier` logic.
-- Port `Echo_lines_multiplier` logic.
-- Port expected DICOM file-count checks.
-- Preserve the rule that any matching approved candidate means the sequence
-  passes.
-- Define whether unexpected acquired sequences are warnings or failures.
-- Define whether missing expected sequences are warnings or failures.
-- Add schema validation for candidate protocols and acquisition parameters.
+### DICOM extraction parity
 
-## TODO: sequence matching
+- Port enhanced MR functional-group extraction from the Flywheel gear.
+- Port Siemens private-tag extraction.
+- Port Phoenix protocol and phase-encoding polarity extraction.
+- Add MR spectroscopy handling.
+- Validate multi-echo combination logic.
+- Validate temporal-position and echo multipliers.
+- Define behaviour for regular MR Image Storage versus Enhanced MR.
 
-- Confirm whether `SeriesDescription` remains the primary key.
-- Add configurable normalisation for whitespace, case, and scanner suffixes.
-- Decide whether `ProtocolName` is a fallback.
-- Decide how duplicate sequence descriptions are represented.
-- Define ordering and ordinal checks if the approved template requires them.
+### XNAT integration
 
-## TODO: XNAT integration
+- Test project-resource download in `xnat4tests`.
+- Confirm the project ID obtained from `data_row.frameset.id` for all launch
+  contexts.
+- Confirm alias-token permissions for project resources.
+- Validate missing resource, missing file, 401, 403, and 404 messages.
+- Validate report resource naming and overwrite/versioning behaviour.
+- Decide whether a failed QC should also update XNAT metadata or create an
+  assessor.
 
-- Validate `DataRow.frequency_id("subject")` for the AIS medimage hierarchy.
-- Validate that every original scan DICOM resource appears as a `DicomSeries`.
-- Validate the report resource label generated by `ProtocolQC@protocol-qc`.
-- Decide whether to overwrite, version, or reject an existing report.
-- Decide whether PASS/FAIL should also be written to XNAT fields or assessor
-  objects.
-- Add an XNAT command-history-friendly summary to stdout.
-- Add `xnat4tests` integration tests using synthetic DICOM only.
-- Test sessions containing derived DICOM resources and confirm they are skipped.
+### Testing
 
-## TODO: output and governance
+- Add a synthetic enhanced-MR fixture.
+- Add PASS and FAIL protocol templates.
+- Add malformed JSON and unsupported dictionary-version tests.
+- Add an integration test that uploads a project resource to `xnat4tests`.
+- Confirm source DICOM is never modified.
+- Confirm logs do not expose credentials or PHI.
 
-- Finalise the JSON report schema and version it.
-- Include source image version, Git commit, template checksum, and run timestamp.
-- Avoid patient-identifying values in report and logs.
-- Define exit-code policy for QC deviations versus processing failures.
-- Define notification handling outside the processing task.
-- Document template approval, versioning, and release procedure.
+### Build and release
 
-## Initial acceptance criteria
-
-- The packaged JSON template is readable at the configured container path.
-- Original XNAT DICOM entries are discovered without modification.
-- Each original DICOM series is represented in the session report.
-- Numeric, numeric-list, and string-list comparisons are unit tested.
-- `DryRun=true` produces a complete report in stdout and no XNAT write.
-- `DryRun=false` uploads exactly one session-level JSON report.
-- No clinical identifiers are written to logs or reports.
+- Report the Windows Dockerfile path bug upstream to Pydra2App.
+- Replace the workaround when the upstream release is fixed.
+- Pin runtime package versions before the first release.
+- Add a GitHub Actions build for the personal GHCR namespace.

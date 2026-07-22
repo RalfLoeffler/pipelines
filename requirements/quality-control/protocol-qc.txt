@@ -1,8 +1,2 @@
+requests
 pydicom
-fileformats
-fileformats-medimage
-fileformats-medimage-extras
-frametree
-frametree-xnat
-pydra2app
-pydra2app-xnat
