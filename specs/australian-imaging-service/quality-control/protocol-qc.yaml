@@ -1,0 +1,46 @@
+schema_version: "2.0"
+title: ProtocolQC
+version: &package_version "0.1.0-dev1"
+
+authors:
+  - name: Ralf Loeffler
+
+docs:
+  description: >-
+    ProtocolQC is a framework for checking whether an imaging session matches
+    an expected acquisition protocol. The comparison rules, protocol definition
+    format, report schema, and XNAT output destination are not yet implemented.
+  info_url: https://github.com/RalfLoeffler/pipelines
+
+packages:
+  pip:
+    australianimagingservice:
+
+commands:
+  protocol-qc:
+    operates_on: medimage/session
+    task:
+      type: python
+      function: australianimagingservice.quality_control.protocol_qc:protocol_qc
+    parameters:
+      ProtocolDefinition:
+        field: protocol_definition
+        default: ""
+        description: >-
+          Identifier or path for the expected protocol definition. The accepted
+          format is still to be specified.
+      TolerancePercent:
+        field: tolerance_percent
+        default: 5.0
+        description: >-
+          Default relative tolerance for numeric protocol parameters.
+      FailOnDeviation:
+        field: fail_on_deviation
+        default: false
+        description: >-
+          Fail the pipeline when a protocol deviation is detected.
+      DryRun:
+        field: dry_run
+        default: true
+        description: >-
+          Analyse without writing results back to XNAT.
