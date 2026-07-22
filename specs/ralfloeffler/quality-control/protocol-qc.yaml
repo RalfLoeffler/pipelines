@@ -1,22 +1,29 @@
 schema_version: "2.0"
 title: ProtocolQC
-version: &package_version "0.1.0-dev1"
-
+version: "0.1.0-dev1"
 authors:
   - name: Ralf Loeffler
-    email: ralf.loeffler@unsw.edu.au
-
+    email: ""
 docs:
   description: >-
-    ProtocolQC is a framework for checking whether an imaging session matches
-    an expected acquisition protocol. The comparison rules, protocol definition
-    format, report schema, and XNAT output destination are not yet implemented.
+    Compare DICOM acquisition parameters in an XNAT imaging session against an
+    approved JSON protocol template packaged in the container image.
   info_url: https://github.com/RalfLoeffler/pipelines
-
+base_image:
+  name: debian
+  tag: bookworm-slim
+  package_manager: apt
 packages:
   pip:
+    pydicom:
+    fileformats:
+    fileformats-medimage:
+    fileformats-medimage-extras:
+    frametree:
+    frametree-xnat:
+    pydra2app:
+    pydra2app-xnat:
     australianimagingservice:
-
 commands:
   protocol-qc:
     operates_on: medimage/session
@@ -24,24 +31,21 @@ commands:
       type: python
       function: australianimagingservice.quality_control.protocol_qc:protocol_qc
     parameters:
-      ProtocolDefinition:
-        field: protocol_definition
-        default: ""
-        description: >-
-          Identifier or path for the expected protocol definition. The accepted
-          format is still to be specified.
-      TolerancePercent:
-        field: tolerance_percent
-        default: 5.0
-        description: >-
-          Default relative tolerance for numeric protocol parameters.
+      ProtocolTemplate:
+        field: protocol_template
+        help: Absolute path to the approved protocol JSON file in the image.
+        default: /opt/protocol-qc-template/protocol-template.json
+      OutputResource:
+        field: output_resource
+        help: FrameTree/XNAT derivative resource path for the JSON report.
+        default: ProtocolQC@protocol-qc
       FailOnDeviation:
         field: fail_on_deviation
+        help: Fail the container after writing a report that contains deviations.
         default: false
-        description: >-
-          Fail the pipeline when a protocol deviation is detected.
       DryRun:
         field: dry_run
+        help: Generate and log the report without writing it back to XNAT.
         default: true
-        description: >-
-          Analyse without writing results back to XNAT.
+    resources:
+      protocol-qc-template: /opt/protocol-qc-template

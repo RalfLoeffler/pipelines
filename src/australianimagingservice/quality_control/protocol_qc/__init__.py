@@ -1,4 +1,4 @@
-"""ProtocolQC pipeline public interface."""
+"""ProtocolQC pipeline package."""
 
 from .workflow import protocol_qc
 

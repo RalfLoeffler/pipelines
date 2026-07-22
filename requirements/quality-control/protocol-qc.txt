@@ -1,2 +1,8 @@
-# ProtocolQC currently uses dependencies already supplied by the pipelines package.
-# Add pipeline-specific runtime dependencies here once the implementation is defined.
+pydicom
+fileformats
+fileformats-medimage
+fileformats-medimage-extras
+frametree
+frametree-xnat
+pydra2app
+pydra2app-xnat

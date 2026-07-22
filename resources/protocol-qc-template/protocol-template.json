@@ -1,0 +1,30 @@
+{
+  "Metadata": {
+    "DictionaryVersion": "1.1.2",
+    "SequenceList": [
+      "REPLACE_WITH_APPROVED_SEQUENCE_NAME"
+    ],
+    "Comment": "Replace this file with the approved ProtocolQC template before release."
+  },
+  "REPLACE_WITH_APPROVED_SEQUENCE_NAME": {
+    "Default": {
+      "Sequence_Attributes": {
+        "Multi-Echo": false,
+        "Echo_lines_multiplier": false,
+        "Temporal_positions_multiplier": false,
+        "Check_DICOM_File_Number": true,
+        "Comment": "Example only"
+      },
+      "Acquisition_Parameters": {
+        "Field_strength": {
+          "value": "3.0",
+          "tolerance": 0.1
+        },
+        "TR": {
+          "value": "2000",
+          "tolerance": 5.0
+        }
+      }
+    }
+  }
+}
