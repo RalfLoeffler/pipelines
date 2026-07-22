@@ -4,6 +4,7 @@ version: &package_version "0.1.0-dev1"
 
 authors:
   - name: Ralf Loeffler
+    email: ralf.loeffler@unsw.edu.au
 
 docs:
   description: >-
