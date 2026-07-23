@@ -60,6 +60,7 @@ packages = ["src/australianimagingservice"]
 [tool.black]
 target-version = ['py38']
 exclude = "src/australianimagingservice/_version.py"
+line-length = 100
 
 [tool.codespell]
 ignore-words = ".codespell-ignorewords"
@@ -79,3 +80,42 @@ strict = true
 namespace_packages = true
 explicit_package_bases = true
 exclude = ["tests", "scripts", "docs", "build", "dist"]
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    ".ipynb_checkpoints",
+]
+
+# Enable useful rule sets
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # import sorting
+    "UP",  # pyupgrade
+    "B",   # bugbear
+]
+ignore = [
+    "E501",  # handled by black
+]
+
+# Let Ruff handle imports like isort
+[tool.ruff.lint.isort]
+known-first-party = ["PROTOCOLQC_CREATE_TEMPLATE_FROM_XNAT"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# --- Jupytext ---
+[tool.jupytext]
+formats = "ipynb,py:percent"
+default_jupytext_formats = "ipynb,py:percent"
+
+# Optional metadata filters to reduce noise
+notebook_metadata_filter = "-all"
+cell_metadata_filter = "-all"
