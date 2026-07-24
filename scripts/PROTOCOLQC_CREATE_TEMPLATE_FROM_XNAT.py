@@ -273,6 +273,152 @@ for scan in scans:
         f"resources={list(scan.resources.keys())}"
     )
 
+# %% [markdown]
+# # Interlude 
+# Playing around, real stuff goes on with **Build the protocol template**
+
+# %%
+scans[1].id
+
+# %%
+scan = scans[1]
+
+# %%
+print(scan)
+print(type(scan))
+print(scan.id)
+print(scan.uri)
+
+# %%
+# [name for name in dir(scan) if not name.startswith("_")]
+for name in sorted(dir(scan)):
+    if not name.startswith("_"):
+        print(name)
+
+# %%
+import inspect
+
+print("Properties and values:")
+for name in sorted(dir(scan)):
+    if name.startswith("_"):
+        continue
+
+    try:
+        value = getattr(scan, name)
+    except Exception as exc:
+        value = f"<error: {exc}>"
+
+    if not callable(value):
+        print(f"{name}: {value!r}")
+
+print("\nMethods:")
+for name in sorted(dir(scan)):
+    if name.startswith("_"):
+        continue
+
+    try:
+        value = getattr(scan, name)
+    except Exception:
+        continue
+
+    if callable(value):
+        print(name)
+
+# %%
+print("ID:", getattr(scan, "id", None))
+print("Label:", getattr(scan, "label", None))
+print("Type:", getattr(scan, "type", None))
+print("Series description:", getattr(scan, "series_description", None))
+print("Quality:", getattr(scan, "quality", None))
+print("Frames:", getattr(scan, "frames", None))
+print("Note:", getattr(scan, "note", None))
+print("URI:", getattr(scan, "uri", None))
+print("XNAT type:", getattr(scan, "xsi_type", None))
+
+# %%
+print("Resource keys:", list(scan.resources.keys()))
+
+for resource_label, resource in scan.resources.items():
+    print(
+        f"Resource={resource_label!r}, "
+        f"type={type(resource).__name__}, "
+        f"uri={getattr(resource, 'uri', None)!r}"
+    )
+
+# %%
+for resource_label, resource in scan.resources.items():
+    print(f"\nResource: {resource_label}")
+
+    for file_name, file_object in resource.files.items():
+        print(
+            f"  {file_name} | "
+            f"size={getattr(file_object, 'size', None)} | "
+            f"uri={getattr(file_object, 'uri', None)}"
+        )
+
+# %%
+print(getattr(scan, "fields", None))
+print(getattr(scan, "field", None))
+
+# %%
+scan_fields = getattr(scan, "fields", None)
+
+if scan_fields is None:
+    scan_fields = getattr(scan, "field", None)
+
+if scan_fields is not None:
+    for key in scan_fields:
+        try:
+            print(key, "=", scan_fields[key])
+        except Exception as exc:
+            print(key, "=", f"<error: {exc}>")
+
+# %%
+help(scan)
+
+# %%
+help(scan.download)
+help(scan.dicom_dump)
+
+# %%
+import inspect
+
+print(inspect.signature(scan.download))
+print(inspect.signature(scan.dicom_dump))
+
+# %%
+dicom_metadata = scan.dicom_dump()
+dicom_metadata
+
+# %%
+scan.dicom_dump(
+    fields=[
+        "SeriesDescription",
+        "ProtocolName",
+        "RepetitionTime",
+        "EchoTime",
+        "MagneticFieldStrength",
+        "SliceThickness",
+        "PixelSpacing",
+    ]
+)
+
+# %%
+scan.dicom_dump(fields="SeriesDescription")
+
+# %%
+print(getattr(scan, "data", None))
+
+# %%
+raw_scan = xnat_connection.get(
+    scan.uri,
+    query={"format": "json"},
+)
+
+print(raw_scan)
+
+
+# %%
 
 # %% [markdown]
 # ## Build the protocol template
