@@ -21,10 +21,26 @@
 # ## 1. Prerequisites
 #
 # Activate the AIS development environment and install the required packages if needed.
+# Note that there are two mamba installations/env places, one that is started with powershell and one with miniforge
 #
 # ```powershell
 # mamba activate ais-pipelines
 # python -m pip install xnat jupyterlab
+# ```
+#
+# once env is active, start ```docker desktop``` and then:
+# ```powershell
+# xnat4tests start --with-data dummydicom
+# $env:XNAT_HOST = "http://localhost:8080"
+# $env:XNAT_USER = "admin"
+# $env:XNAT_PASS = "admin"
+# Start-Process "http://localhost:8080"
+# python -m jupyter lab
+# ```
+#
+# to stop: 
+# ```powershell
+# xnat4tests stop   
 # ```
 #
 # Typical local `xnat4tests` settings are:
@@ -100,6 +116,7 @@ project_ids = list(xnat_connection.projects.keys())
 if not project_ids:
     raise RuntimeError("No projects are visible to the current XNAT user.")
 
+# # !r means format as repr instead of string 
 for project_id, project_obj in xnat_connection.projects.items():
     print(
         f"ID={project_id!r}, "
@@ -107,6 +124,172 @@ for project_id, project_obj in xnat_connection.projects.items():
         f"secondary_id={getattr(project_obj, 'secondary_id', None)!r}"
     )
 
+
+# %%
+# get the first value/key pair:
+first_project_id, first_project_obj = list(xnat_connection.projects.items())[0]
+# below only other definitions are used
+project_obj = first_project_obj
+project_id = first_project_id
+
+
+# %%
+print(type(first_project_obj))
+
+import inspect
+
+# print(dir(first_project_obj))
+for attr in dir(first_project_obj):
+    print(attr)
+
+# from pprint import pprint
+
+# pprint(first_project_obj.__dict__)
+
+
+# %%
+for attr in dir(project_obj):
+    if not attr.startswith("_"):
+        try:
+            value = getattr(first_project_obj, attr)
+            print(f"{attr} = {value!r}")
+        except Exception as e:
+            print(f"{attr} = <ERROR: {e}>")
+
+# %%
+import inspect
+from pprint import pprint
+
+print("=" * 80)
+print("OBJECT TYPE")
+print("=" * 80)
+print(type(project_obj))
+
+print("\n" + "=" * 80)
+print("RAW INSTANCE DATA (__dict__)")
+print("=" * 80)
+
+try:
+    pprint(project_obj.__dict__)
+except Exception as e:
+    print(f"Could not read __dict__: {e}")
+
+print("\n" + "=" * 80)
+print("ATTRIBUTE INSPECTION")
+print("=" * 80)
+
+for attr in sorted(dir(project_obj)):
+    if attr.startswith("_"):
+        continue
+
+    try:
+        value = getattr(project_obj, attr)
+
+        # Avoid printing huge collections
+        value_repr = repr(value)
+        if len(value_repr) > 200:
+            value_repr = value_repr[:200] + "..."
+
+        print(f"{attr}: {value_repr}")
+
+    except Exception as e:
+        print(f"{attr}: ERROR -> {type(e).__name__}: {e}")
+
+        # Inspect the attribute without triggering lazy loading
+        try:
+            static_obj = inspect.getattr_static(project_obj, attr)
+            print(f"    STATIC TYPE : {type(static_obj)}")
+            print(f"    STATIC REPR : {static_obj!r}")
+        except Exception as e2:
+            print(f"    STATIC ERROR: {e2}")
+
+print("\n" + "=" * 80)
+print("PROPERTIES DEFINED ON CLASS")
+print("=" * 80)
+
+for name, obj in sorted(type(project_obj).__dict__.items()):
+    if isinstance(obj, property):
+        print(f"{name}:")
+        print(f"    fget = {obj.fget}")
+        print(f"    fset = {obj.fset}")
+        print(f"    fdel = {obj.fdel}")
+
+# %%
+print(type(project_obj))
+
+for name in ["data", "fulldata"]:
+    if hasattr(project_obj, name):
+        print(f"\n{name}:")
+        pprint(getattr(project_obj, name))
+
+# %%
+from pprint import pprint
+
+for section, value in project_obj.fulldata.items():
+    print(f"\n=== {section} ===")
+    pprint(value)
+
+# %%
+from pprint import pprint
+
+pprint(project_obj.fulldata)
+
+# %%
+dir(project_obj)
+
+# %%
+pprint(project_obj.fulldata["children"])
+
+# %%
+# FInd potential children
+for attr in sorted(dir(project_obj)):
+    if attr.startswith("_"):
+        continue
+
+    try:
+        value = getattr(project_obj, attr)
+
+        if hasattr(value, "__len__") and not isinstance(value, (str, bytes)):
+            print(attr, type(value))
+    except Exception:
+        pass
+
+# %%
+# known children
+print("subjects:", type(project_obj.subjects))
+print("experiments:", type(project_obj.experiments))
+print("resources:", type(project_obj.resources))
+print("files:", type(project_obj.files))
+
+# %%
+print(list(project_obj.subjects.keys()))
+print(list(project_obj.experiments.keys()))
+print(list(project_obj.resources.keys()))
+# files get the files uploaded, e.g. the protocol template
+print(list(project_obj.files.keys()))
+
+# %%
+for subject_id, subject_obj in project_obj.subjects.items():
+    print(subject_id)
+
+# %%
+for attr in sorted(dir(project_obj)):
+    if attr.startswith("_"):
+        continue
+
+    try:
+        value = getattr(project_obj, attr)
+
+        if isinstance(value, (dict, list, tuple)):
+            print(f"{attr}: {type(value)} len={len(value)}")
+    except Exception:
+        pass
+
+# %%
+
+# %%
+
+# %%
 
 # %% [markdown]
 # ## 5. Select a project

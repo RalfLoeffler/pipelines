@@ -634,7 +634,7 @@ for name, value in protocol_template.items():
 # ## Upload the reviewed template to the XNAT project resource
 
 # %%
-# UPLOAD_TO_XNAT=True
+UPLOAD_TO_XNAT=True
 
 if UPLOAD_TO_XNAT:
     uploaded_resource = upload_project_resource_file(
